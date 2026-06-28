@@ -91,10 +91,10 @@
 
         layer_3 {
             bindings = <
-&kp ESCAPE      &kp F1                  &kp F3          &kp F4                   &trans                                         &kp RA(E)        &kp RG(RA(DOWN_ARROW))    &kp RC(UP_ARROW)           &kp RA(LEFT_ARROW)    &trans
-&kp HOME        &kp F5                  &kp DOWN_ARROW  &kp RIGHT_ARROW          &kp END           &trans    &trans             &kp RA(W)        &kp RS(RG(LEFT_BRACKET))  &kp RS(RG(RIGHT_BRACKET))  &kp RG(RS(NUMBER_4))  &bt BT_NXT
-&kp LEFT_SHIFT  &kp LG(LS(LEFT_ARROW))  &trans          &kp LG(LS(RIGHT_ARROW))  &kp LEFT_COMMAND  &trans    &trans             &kp RG(W)        &kp RG(LEFT_BRACKET)      &kp RG(RIGHT_BRACKET)      &kp RS(RG(T))         &bt BT_PRV
-&kp RA(SPACE)   &kp INT_HENKAN          &kp LANGUAGE_3  &kp RS(LANGUAGE_8)       &trans            &trans    &kp C_VOLUME_DOWN  &kp C_VOLUME_UP                                                                             &bt BT_CLR
+&kp ESCAPE      &kp F1                  &kp F3          &kp F4                   &trans                                         &kp RA(E)        &kp RG(RC(LEFT))          &kp RC(RG(RIGHT))          &kp RA(RG(RC(RIGHT)))  &trans
+&kp HOME        &kp F5                  &kp DOWN_ARROW  &kp RIGHT_ARROW          &kp END           &trans    &trans             &kp RA(W)        &kp RS(RG(LEFT_BRACKET))  &kp RS(RG(RIGHT_BRACKET))  &kp RG(RS(NUMBER_4))   &bt BT_NXT
+&kp LEFT_SHIFT  &kp LG(LS(LEFT_ARROW))  &trans          &kp LG(LS(RIGHT_ARROW))  &kp LEFT_COMMAND  &trans    &trans             &kp RG(W)        &kp RG(LEFT_BRACKET)      &kp RG(RIGHT_BRACKET)      &kp RS(RG(T))          &bt BT_PRV
+&kp RA(SPACE)   &kp INT_HENKAN          &kp LANGUAGE_3  &kp RS(LANGUAGE_8)       &trans            &trans    &kp C_VOLUME_DOWN  &kp C_VOLUME_UP                                                                              &bt BT_CLR
             >;
 
             sensor-bindings = <&inc_dec_kp LC(PAGE_UP) LC(PAGE_DOWN)>;
