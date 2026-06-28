@@ -91,10 +91,10 @@
 
         layer_3 {
             bindings = <
-&none      &kp F9            &kp F10       &kp F11       &kp F12                    &kp RA(E)     &kp RG(RC(LEFT))  &kp RC(RG(RIGHT))  &kp RA(RG(RC(RIGHT)))  &none
-&none      &kp LEFT_CONTROL  &kp LEFT_ALT  &kp LEFT_GUI  &none    &trans    &trans  &kp LEFT      &kp DOWN          &kp UP             &kp RIGHT              &none
-&kp LSHFT  &kp X             &kp C         &kp V         &none    &trans    &trans  &kp RC(LEFT)  &kp RG(RA(LEFT))  &kp RG(RA(RIGHT))  &kp RC(RIGHT)          &none
-&kp LCTRL  &kp LALT          &kp LGUI      &none         &trans   &trans    &none   &none                                                                     &none
+&none      &kp F9            &kp F10       &kp F11       &kp F12                    &kp RA(RG(RC(LEFT)))  &kp RG(RC(LEFT))  &kp RC(RG(RIGHT))  &kp RA(RG(RC(RIGHT)))  &none
+&none      &kp LEFT_CONTROL  &kp LEFT_ALT  &kp LEFT_GUI  &none    &trans    &trans  &kp LEFT              &kp DOWN          &kp UP             &kp RIGHT              &none
+&kp LSHFT  &kp X             &kp C         &kp V         &none    &trans    &trans  &kp RC(LEFT)          &kp RG(RA(LEFT))  &kp RG(RA(RIGHT))  &kp RC(RIGHT)          &none
+&kp LCTRL  &kp LALT          &kp LGUI      &none         &trans   &trans    &none   &none                                                                             &none
             >;
 
             sensor-bindings = <&inc_dec_kp LC(PAGE_UP) LC(PAGE_DOWN)>;
