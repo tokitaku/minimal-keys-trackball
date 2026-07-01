@@ -78,10 +78,10 @@
 
         layer_2 {
             bindings = <
-&none                 &kp NUMBER_1  &kp NUMBER_2  &kp NUMBER_3  &kp PLUS                                          &kp LEFT_PARENTHESIS  &kp RIGHT_PARENTHESIS     &kp CARET                    &kp TILDE                &kp PIPE
-&kp AT_SIGN           &kp NUMBER_4  &kp N5        &kp NUMBER_6  &kp MINUS     &kp GREATER_THAN    &kp GRAVE       &kp LEFT_BRACKET      &mt RIGHT_GUI LEFT_BRACE  &mt RIGHT_ALT DOUBLE_QUOTES  &mt RIGHT_CONTROL COLON  &kp SLASH
-&mt LEFT_SHIFT ASTRK  &kp N7        &kp N8        &kp N9        &kp ASTERISK  &kp LESS_THAN       &kp UNDERSCORE  &kp RIGHT_BRACKET     &kp RIGHT_BRACE           &kp SQT                      &kp SEMICOLON            &mt RIGHT_SHIFT BACKSLASH
-&kp HASH              &kp N0        &kp COMMA     &kp COMMA     &kp SLASH     &kp EQUAL           &trans          &trans                                                                                                &none
+&none                &kp NUMBER_1  &kp NUMBER_2  &kp NUMBER_3  &kp PLUS                                          &kp LEFT_PARENTHESIS  &kp RIGHT_PARENTHESIS     &kp CARET                    &kp TILDE                &kp PIPE
+&kp AT_SIGN          &kp NUMBER_4  &kp N5        &kp NUMBER_6  &kp MINUS     &kp GREATER_THAN    &kp GRAVE       &kp LEFT_BRACKET      &mt RIGHT_GUI LEFT_BRACE  &mt RIGHT_ALT DOUBLE_QUOTES  &mt RIGHT_CONTROL COLON  &kp BACKSLASH
+&mt LEFT_SHIFT HASH  &kp N7        &kp N8        &kp N9        &kp ASTERISK  &kp LESS_THAN       &kp UNDERSCORE  &kp RIGHT_BRACKET     &kp RIGHT_BRACE           &kp SQT                      &kp SEMICOLON            &mt RIGHT_SHIFT EXCLAMATION
+&kp AMPERSAND        &kp N0        &kp COMMA     &kp COMMA     &kp SLASH     &kp EQUAL           &trans          &trans                                                                                                &none
             >;
 
             sensor-bindings =
