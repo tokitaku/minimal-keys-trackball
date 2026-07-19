@@ -1,4 +1,0 @@
-config ZMK_BEHAVIOR_TRACKBALL_SPEED
-    bool "Enable persistent trackball speed behavior"
-    default y
-    depends on ZMK_RUNTIME_INPUT_PROCESSOR
