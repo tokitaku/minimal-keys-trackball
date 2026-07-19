@@ -3,7 +3,7 @@
         trackball_speed_down: trackball_speed_down {
             compatible = "zmk,behavior-trackball-speed";
             processor-name = "mouse";
-            direction = <-1>;
+            direction = <(-1)>;
             #binding-cells = <0>;
         };
 
