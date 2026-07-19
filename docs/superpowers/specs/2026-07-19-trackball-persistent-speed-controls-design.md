@@ -4,7 +4,7 @@
 
 On layer 4, the two buttons beneath the right-hand trackball change the
 trackball cursor speed by 0.25x per press. The selected speed is retained
-after restart or power loss.
+after restart or power loss once its one-second save window has elapsed.
 
 ## User behavior
 
