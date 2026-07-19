@@ -1,0 +1,15 @@
+description: Persistent trackball cursor speed adjustment behavior
+
+compatible: "zmk,behavior-trackball-speed"
+
+include: zero_param.yaml
+
+properties:
+  processor-name:
+    type: string
+    required: true
+    description: Name of the runtime input processor to adjust.
+  direction:
+    type: int
+    required: true
+    description: -1 decreases speed and 1 increases speed.

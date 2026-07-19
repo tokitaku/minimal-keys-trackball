@@ -1,0 +1,17 @@
+/ {
+    behaviors {
+        trackball_speed_down: trackball_speed_down {
+            compatible = "zmk,behavior-trackball-speed";
+            processor-name = "mouse";
+            direction = <-1>;
+            #binding-cells = <0>;
+        };
+
+        trackball_speed_up: trackball_speed_up {
+            compatible = "zmk,behavior-trackball-speed";
+            processor-name = "mouse";
+            direction = <1>;
+            #binding-cells = <0>;
+        };
+    };
+};
