@@ -1,0 +1,253 @@
+# minimal-keys カスタマイズ（アプリ）が読む manifest.json を、リリースに付いている
+# .uf2 から自動生成する。
+#
+# なぜ自動化するか:
+#   manifest.json を手で書いて手でアップロードしていたため、v1.0.1 で誤って別
+#   ファイル（ZMK のキー配置定義）を上げてしまい、顧客のファーム更新が全滅した。
+#   アプリは `releases/latest/download/manifest.json` を見るので、配布が壊れると
+#   全顧客が同時に更新不能になる。人が触らない工程にして再発を断つ。
+#
+# 使い方:
+#   1. リリースに .uf2 を添付してから publish する → 自動で manifest.json が付く
+#   2. publish 済みのリリースを直したいとき → Actions から手動実行し、タグを指定
+#
+# 設定の初期化が必要なファームを出すとき:
+#   リリースノートに [requires-settings-reset] と書く。
+#   書かなければ false（顧客の設定は保たれる）。
+
+name: manifest を生成する
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "対象リリースのタグ（例: v1.0.1）"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 対象のリリースを特定する
+        id: target
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          raw="${INPUT_TAG:-$RELEASE_TAG}"
+
+          # 貼り付けで前後に空白や改行が混ざると「見つからない」で落ちる。
+          # 落ちること自体より、何を探したのかがログに出ないほうが問題なので、
+          # 受け取った値と照合に使う値の両方を必ず表示する。
+          tag="$(printf '%s' "$raw" | tr -d '[:space:]')"
+          echo "受け取った値: '$raw'"
+          echo "照合に使う値: '$tag'"
+
+          if [ -z "$tag" ]; then
+            echo "::error::対象のタグが空です。"
+            exit 1
+          fi
+
+          # API は必ず認証して叩く。ランナーの外向きIPは他の全ユーザーと共有で、
+          # 認証なしだと時間あたりの枠を食い合って 403 になる（公開リポでも同じ）。
+          curl -sSfL \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            -o releases.json
+          echo "このリポジトリにあるリリース:"
+          jq -r '.[] | "  - \(.tag_name)"' releases.json
+
+          # v の有無だけの取り違えは自動で吸収する。それ以外は直さない
+          # （似ているだけの別リリースを掴むほうが危険）。
+          resolved=""
+          for cand in "$tag" "v$tag" "${tag#v}"; do
+            [ -n "$cand" ] || continue
+            if jq -e --arg t "$cand" 'any(.[]; .tag_name == $t)' releases.json > /dev/null; then
+              resolved="$cand"
+              break
+            fi
+          done
+
+          if [ -z "$resolved" ]; then
+            echo "::error::'$tag' に一致するリリースがありません。上の一覧から正確なタグ名を選んで、もう一度実行してください。"
+            exit 1
+          fi
+
+          echo "対象リリース: $resolved"
+          echo "tag=$resolved" >> "$GITHUB_OUTPUT"
+
+      - name: ファームウェアを取得する
+        env:
+          TAG: ${{ steps.target.outputs.tag }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir fw && cd fw
+
+          # gh に頼ると失敗理由が「release not found」の一言に潰れるため、
+          # 何が付いているかを自分で列挙してから落とす。
+          curl -sSfL \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$TAG" \
+            -o release.json
+
+          echo "リリース $TAG に付いているファイル:"
+          jq -r '.assets[] | "  - \(.name) (\(.size) bytes)"' release.json
+
+          jq -r '.assets[] | select(.name | endswith(".uf2")) | .browser_download_url' \
+            release.json > urls.txt
+          count=$(wc -l < urls.txt | tr -d ' ')
+          if [ "$count" -eq 0 ]; then
+            echo "::error::リリース $TAG に .uf2 が1つもありません。ファームウェアを先にアップロードしてから、もう一度実行してください。"
+            exit 1
+          fi
+
+          while read -r url; do
+            curl -sSfL -O "$url"
+          done < urls.txt
+          ls -l
+
+      - name: manifest.json を組み立てる
+        env:
+          TAG: ${{ steps.target.outputs.tag }}
+        run: |
+          set -euo pipefail
+          cd fw
+
+          # 設定の初期化が要るかは、リリースノートの印で決める。
+          # 推測しない（誤って true にすると顧客の設定が消える）。
+          #
+          # ノートは前段で取得済みの release.json から読む。手動実行のときは
+          # github.event.release が空で、そこを見ると印を取りこぼして黙って
+          # false になるため。
+          reset_flag=false
+          if jq -r '.body // ""' release.json | grep -qF '[requires-settings-reset]'; then
+            reset_flag=true
+          fi
+          echo "設定の初期化が必要: $reset_flag"
+
+          base="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}"
+          : > assets.jsonl
+
+          for f in *.uf2; do
+            # 役割はファイル名の規約で決める。判定できないものは止める。
+            # 推測で role を割り当てると、左右が逆に書き込まれる事故になる。
+            case "$f" in
+              *_R.uf2)          role=central ;;
+              *_L.uf2)          role=peripheral ;;
+              settings_reset.uf2) role=settings_reset ;;
+              *)
+                echo "::error::$f の役割を判定できません。ファイル名は *_R.uf2 / *_L.uf2 / settings_reset.uf2 のいずれかにしてください。"
+                exit 1
+                ;;
+            esac
+
+            sha=$(sha256sum "$f" | cut -d' ' -f1)
+            size=$(stat -c%s "$f")
+            target="${f%.uf2}"
+
+            if [ "$role" = "settings_reset" ]; then
+              jq -nc --arg role "$role" --arg name "$f" --arg url "$base/$f" \
+                     --arg sha "$sha" --argjson size "$size" \
+                '{role:$role, name:$name, url:$url, sha256:$sha, size:$size}' >> assets.jsonl
+            else
+              jq -nc --arg role "$role" --arg bt "$target" --arg name "$f" --arg url "$base/$f" \
+                     --arg sha "$sha" --argjson size "$size" \
+                '{role:$role, build_target:$bt, name:$name, url:$url, sha256:$sha, size:$size}' >> assets.jsonl
+            fi
+          done
+
+          # factory_reset_supported は「工場出荷リセットをこのリリースで実行して
+          # よいか」をアプリに伝える。settings_reset.uf2 が在ることと同義なので、
+          # 人が書くのではなく資産から導く。ここが欠けているとアプリは
+          # factory_reset_unavailable でリセットを拒否する（v1.0.0〜v1.0.4 で発生）。
+          jq -s --arg version "$TAG" --argjson reset "$reset_flag" \
+                --arg released_at "$(date -u +%Y-%m-%d)" \
+            '{schema:2, version:$version, requires_settings_reset:$reset,
+              factory_reset_supported: ([.[] | select(.role == "settings_reset")] | length == 1),
+              assets:., released_at:$released_at}' \
+            assets.jsonl > ../manifest.json
+
+          cat ../manifest.json
+
+      - name: 生成した manifest を検証する
+        env:
+          TAG: ${{ steps.target.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          # アプリが ManifestInvalid で弾く条件を、ここで先に潰す。
+          # 壊れたものを配布してから顧客に発見させない。
+          jq -e '.schema == 2' manifest.json > /dev/null \
+            || { echo "::error::schema が 2 ではありません。"; exit 1; }
+          jq -e --arg t "$TAG" '.version == $t' manifest.json > /dev/null \
+            || { echo "::error::version がタグと一致しません。"; exit 1; }
+
+          for role in central peripheral; do
+            n=$(jq --arg r "$role" '[.assets[] | select(.role == $r)] | length' manifest.json)
+            if [ "$n" -ne 1 ]; then
+              echo "::error::role=$role のファームウェアが $n 個です（1個である必要があります）。"
+              exit 1
+            fi
+          done
+
+          if jq -e '.requires_settings_reset' manifest.json > /dev/null; then
+            jq -e '[.assets[] | select(.role == "settings_reset")] | length == 1' manifest.json > /dev/null \
+              || { echo "::error::設定の初期化が必要な指定なのに settings_reset.uf2 がありません。"; exit 1; }
+          fi
+
+          jq -e 'all(.assets[]; (.sha256 | test("^[0-9a-f]{64}$")) and .size > 0)' manifest.json > /dev/null \
+            || { echo "::error::sha256 または size が不正です。"; exit 1; }
+
+          # 顧客が実際にダウンロードする URL に届くかまで見る。
+          # 名前の付け方次第で 404 になることがあるため、机上の検証で終わらせない。
+          for url in $(jq -r '.assets[].url' manifest.json); do
+            code=$(curl -sIL -o /dev/null -w '%{http_code}' "$url")
+            if [ "$code" != "200" ]; then
+              echo "::error::$url が $code を返しました。顧客はダウンロードできません。"
+              exit 1
+            fi
+          done
+
+          echo "検証を通過しました。"
+
+      - name: リリースに添付する
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.target.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # ここだけは書き込みなので token が要る。失敗する場合はリポジトリの
+          # Settings → Actions → General → Workflow permissions が
+          # 「Read and write permissions」になっているか確認する。
+          if ! gh release upload "$TAG" manifest.json --repo "$GITHUB_REPOSITORY" --clobber; then
+            echo "::error::manifest.json を添付できませんでした。Settings → Actions → General → Workflow permissions を「Read and write permissions」にしてから、もう一度実行してください。"
+            exit 1
+          fi
+
+      - name: 顧客が受け取るものを実際に取得して確認する
+        env:
+          TAG: ${{ steps.target.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # アップロード後に、公開URLから取り直して中身を照合する。
+          # 「上げたつもり」で終わらせない。
+          sleep 5
+          curl -sL -o published.json \
+            "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/manifest.json"
+          if ! diff <(jq -S . manifest.json) <(jq -S . published.json) > /dev/null; then
+            echo "::error::公開された manifest.json が生成したものと一致しません。"
+            diff <(jq -S . manifest.json) <(jq -S . published.json) || true
+            exit 1
+          fi
+          echo "公開された manifest.json は正しい内容です。"
